@@ -21,4 +21,5 @@ if __name__ == '__main__':
         cpu.load(path + program + extension)
     
     for program in programs_to_run:
-        cpu.run(path + program + extension)
+        cpu.run()
+        cpu.halted = True
