@@ -16,7 +16,32 @@ class CPU:
             0b10000010: self.ldi, 
             0b01000111: self.prn, 
             0b00000001: self.hlt, 
-            0b10100010: self.mult}
+            0b10100010: self.mult,
+            0b01000110: self.pop,
+            0b01000101: self.push}
+        self.sp = 256
+    
+    def push(self):
+        register_num = self.ram[self.pc+1]
+        #making it so sp and pc never cross paths
+        if self.sp > 0 and self.sp > self.pc + 3:
+            self.sp -= 1
+            self.ram[self.sp] = self.reg[register_num]
+            self.pc += 2
+        else:
+            print("Cannot push anymore! Start popping!")
+        
+
+    def pop(self):
+        register_num = self.ram[self.pc+1]
+        if self.sp < 256:
+            value = self.ram[self.sp]
+            self.reg[register_num] = value
+            self.sp += 1
+            self.pc += 2
+        else:
+            print("Nothing in the stack!")
+        
     
     def mult(self):
         #multiply binary numbers and store results into first register
