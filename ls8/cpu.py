@@ -8,7 +8,7 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.reg = [0] * 8
+        self.reg = [0, 0, 0, 0, 0, 0, 0, 0xF4]
         self.ram = [0] * 256
         self.pc = 0
         self.halted = False
@@ -18,9 +18,53 @@ class CPU:
             0b00000001: self.hlt, 
             0b10100010: self.mult,
             0b01000110: self.pop,
-            0b01000101: self.push}
-        self.sp = 256
+            0b01000101: self.push,
+            0b00011000: self.mult2print,
+            0b00010001: self.ret,
+            0b01010000: self.call,
+            0b10100000: "ADD"}
+        self.sp = self.reg[7]
     
+    def call(self):
+        #take the next item - which is a register number -
+        next_instruction_register = self.ram[self.pc + 1]
+        next_instruction = self.reg[next_instruction_register]
+        if next_instruction in self.instructions:
+            #Find the place (pc) to come back to - store in it in the stack
+
+            #Now self.pc is the next instruction - setting it at the top of stack
+            self.ram[self.sp] = self.pc + 2
+
+            #update the position for the function (pc)
+            #moving the program counter to the the function in the ram
+            self.pc = next_instruction
+
+            #Calling the function
+            self.instructions[next_instruction]()
+        else:
+            print("Incorrect function!")
+            
+    def mult2print(self):
+        op = self.ram[self.pc]
+        first_reg = self.ram[self.pc+1]
+        second_reg = self.ram[self.pc+2]
+        if op in self.instructions:
+            self.alu(self.instructions[op], first_reg, second_reg)
+
+        self.pc += 3
+
+        self.prn()
+
+        self.ret()
+
+    def ret(self):
+        #get the last pc from the stack by popping
+        #But pop needs to think that the next pc is the register number
+        
+        self.pc = self.ram[self.sp]
+        #set the new pc
+
+
     def push(self):
         register_num = self.ram[self.pc+1]
         #making it so sp and pc never cross paths
