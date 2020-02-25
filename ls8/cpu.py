@@ -22,9 +22,50 @@ class CPU:
             0b00011000: self.mult2print,
             0b00010001: self.ret,
             0b01010000: self.call,
-            0b10100000: "ADD"}
-        self.sp = self.reg[7]
-    
+            0b10100000: self.add,
+            0b10100111: self._cmp,
+            0b01010100: self.jmp,
+            0b01010101: self.jeq,
+            0b01010110: self.jne
+            }
+        self.fl = [0] * 8
+
+        #Known indices for register
+        self.sp = 7
+        #Known indices for flags
+        self.equal = 7
+        self.greater_than = 6
+        self.less_than = 5
+        
+    def _cmp(self):
+        self.alu("CMP", self.ram[self.pc+1], self.ram[self.pc+2])
+
+    def add(self):
+        self.alu("ADD", self.ram[self.pc+1], self.ram[self.pc+2])
+
+    def jeq(self):
+        register_num = self.ram[self.pc+1]
+
+        #if equals go to this register number
+        if self.fl[self.equal] == 1:
+            self.pc = self.reg[register_num]
+        else:
+            self.pc += 2
+
+    def jne(self):
+        register_num = self.ram[self.pc+1]
+
+        #if equals go to this register number
+        if self.fl[self.equal] == 0:
+            self.pc = self.reg[register_num]
+        else:
+            self.pc += 2        
+
+    def jmp(self):
+        register_num = self.ram[self.pc+1]
+
+        self.pc = self.reg[register_num]
+
     def call(self):
         #take the next item - which is a register number -
         next_instruction_register = self.ram[self.pc + 1]
@@ -33,7 +74,7 @@ class CPU:
             #Find the place (pc) to come back to - store in it in the stack
 
             #Now self.pc is the next instruction - setting it at the top of stack
-            self.ram[self.sp] = self.pc + 2
+            self.ram[self.reg[self.sp]] = self.pc + 2
 
             #update the position for the function (pc)
             #moving the program counter to the the function in the ram
@@ -49,7 +90,7 @@ class CPU:
         first_reg = self.ram[self.pc+1]
         second_reg = self.ram[self.pc+2]
         if op in self.instructions:
-            self.alu(self.instructions[op], first_reg, second_reg)
+            self.instructions[op]()
 
         self.pc += 3
 
@@ -61,16 +102,16 @@ class CPU:
         #get the last pc from the stack by popping
         #But pop needs to think that the next pc is the register number
         
-        self.pc = self.ram[self.sp]
+        self.pc = self.ram[self.reg[self.sp]]
         #set the new pc
 
 
     def push(self):
         register_num = self.ram[self.pc+1]
         #making it so sp and pc never cross paths
-        if self.sp > 0 and self.sp > self.pc + 3:
-            self.sp -= 1
-            self.ram[self.sp] = self.reg[register_num]
+        if self.reg[self.sp] > 0 and self.reg[self.sp] > self.pc + 3:
+            self.reg[self.sp] -= 1
+            self.ram[self.reg[self.sp]] = self.reg[register_num]
             self.pc += 2
         else:
             print("Cannot push anymore! Start popping!")
@@ -79,9 +120,9 @@ class CPU:
     def pop(self):
         register_num = self.ram[self.pc+1]
         if self.sp < 256:
-            value = self.ram[self.sp]
+            value = self.ram[self.reg[self.sp]]
             self.reg[register_num] = value
-            self.sp += 1
+            self.reg[self.sp] += 1
             self.pc += 2
         else:
             print("Nothing in the stack!")
@@ -117,6 +158,28 @@ class CPU:
         self.halted = True
         self.pc += 1
 
+    def alu(self, op, reg_a, reg_b):
+        """ALU operations."""
+
+        if op == "ADD":
+            self.reg[reg_a] += self.reg[reg_b]
+            self.pc += 3
+        elif op == "CMP":
+            #Reset all flags
+            self.fl[-3:] = [0,0,0]
+
+            #Check if equal, greater than, then less
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.fl[self.equal] = 1
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.fl[self.greater_than] = 1
+            else:
+                self.fl[self.less_than] = 1
+
+            self.pc += 3            
+        else:
+            raise Exception("Unsupported ALU operation")
+
     def ram_read(self, address):
         print(self.ram[address])
 
@@ -143,16 +206,6 @@ class CPU:
             self.ram_write(address, instruction)
             address += 1
 
-
-    def alu(self, op, reg_a, reg_b):
-        """ALU operations."""
-
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
-        else:
-            raise Exception("Unsupported ALU operation")
-
     def trace(self):
         """
         Handy function to print out the CPU state. You might want to call this
@@ -161,7 +214,7 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
+            self.fl,
             #self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
@@ -176,7 +229,6 @@ class CPU:
     def run(self):
         while not self.halted:
             instruction = self.ram[self.pc]
-
             if instruction in self.instructions:
                 self.instructions[instruction]()
             else:

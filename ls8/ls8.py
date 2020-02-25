@@ -7,19 +7,17 @@ from cpu import *
 import os
 
 
-if __name__ == '__main__':
-    cpu = CPU()
-    
+if __name__ == '__main__':    
     if sys.argv[1] == "all":
-        programs_to_run = ["call", "interrupts", "keyboard", 'mult', 'print8', 'printstr', 'sctest', 'stack', 'stackoverflow']
+        programs_to_run = ["call", 'mult', 'print8', 'sctest', 'stack']
     else:
         programs_to_run = sys.argv[1:]
     
     path = "examples/"
     extension = ".ls8"
     for program in programs_to_run:
+        cpu = CPU()
         cpu.load(path + program + extension)
-    
-    for program in programs_to_run:
+        print(f'PROGRAM: {program}')
         cpu.run()
-        cpu.halted = True
+    
