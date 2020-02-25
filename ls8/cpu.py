@@ -205,6 +205,8 @@ class CPU:
         for instruction in program:
             self.ram_write(address, instruction)
             address += 1
+        
+        f.close()
 
     def trace(self):
         """
